@@ -1,0 +1,62 @@
+{
+  "topic": "System Design",
+  "difficulty": "Junior",
+  "evaluations": [
+    {
+      "technical_score": 0,
+      "communication_score": 0,
+      "confidence_score": 0,
+      "overall_score": 0,
+      "strengths": [],
+      "areas_for_improvement": [
+        "Lack of technical knowledge",
+        "Inability to communicate ideas effectively"
+      ],
+      "feedback": "The candidate failed to provide a meaningful response to the question.",
+      "verdict": "Needs Work",
+      "question_number": 1
+    },
+    {
+      "technical_score": 0,
+      "communication_score": 0,
+      "confidence_score": 0,
+      "overall_score": 0,
+      "strengths": [],
+      "areas_for_improvement": [
+        "provide detailed technical explanations",
+        "develop communication skills"
+      ],
+      "feedback": "The answer lacks any meaningful technical content.",
+      "verdict": "Needs Work",
+      "question_number": 2
+    },
+    {
+      "technical_score": 0,
+      "communication_score": 0,
+      "confidence_score": 0,
+      "overall_score": 0,
+      "strengths": [],
+      "areas_for_improvement": [
+        "Lack of technical details",
+        "Inability to articulate a clear approach"
+      ],
+      "feedback": "The candidate's response was extremely brief and did not demonstrate any understanding of the problem.",
+      "verdict": "Needs Work",
+      "question_number": 3
+    },
+    {
+      "technical_score": 0,
+      "communication_score": 0,
+      "confidence_score": 0,
+      "overall_score": 0,
+      "strengths": [],
+      "areas_for_improvement": [
+        "provide detailed answers",
+        "demonstrate technical knowledge"
+      ],
+      "feedback": "The answer is too brief and lacks technical details.",
+      "verdict": "Needs Work",
+      "question_number": 4
+    }
+  ]
+}

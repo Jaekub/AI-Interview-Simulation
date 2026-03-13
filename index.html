@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Interview Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --border: #2a2a35;
+    --border2: #35353f;
+    --accent: #7c6cfa;
+    --accent2: #a695ff;
+    --green: #3ecf8e;
+    --amber: #f5a623;
+    --red: #ff5f57;
+    --text: #f0eff5;
+    --muted: #8888a0;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* ── NOISE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; width: 100%; max-width: 780px; padding: 0 20px 80px; }
+
+  /* ── HEADER ── */
+  header {
+    padding: 40px 0 32px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .logo {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: grid; place-items: center;
+    font-size: 18px;
+  }
+  h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+  h1 span { color: var(--accent2); }
+
+  /* ── SCREENS ── */
+  .screen { display: none; }
+  .screen.active { display: block; animation: fadeUp 0.35s ease both; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── SETUP SCREEN ── */
+  .setup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .section-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    grid-column: 1 / -1;
+  }
+  .option-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+  }
+  .option-card:hover { border-color: var(--border2); background: var(--surface2); }
+  .option-card.selected { border-color: var(--accent); background: rgba(124,108,250,0.08); }
+  .option-card .label { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+  .option-card .sub { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+
+  .diff-grid { grid-template-columns: repeat(3, 1fr); }
+
+  .btn-start {
+    width: 100%;
+    padding: 15px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn-start:hover { opacity: 0.88; transform: translateY(-1px); }
+  .btn-start:active { transform: translateY(0); }
+  .btn-start:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+  /* ── PROGRESS BAR ── */
+  .progress-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 99px;
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 99px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 0%;
+  }
+  .progress-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ── CHAT ── */
+  .chat-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+    min-height: 200px;
+  }
+
+  .bubble {
+    max-width: 82%;
+    padding: 14px 18px;
+    border-radius: 16px;
+    font-size: 14.5px;
+    line-height: 1.6;
+    animation: fadeUp 0.25s ease both;
+  }
+  .bubble.interviewer {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+    align-self: flex-start;
+  }
+  .bubble.candidate {
+    background: rgba(124,108,250,0.15);
+    border: 1px solid rgba(124,108,250,0.3);
+    border-bottom-right-radius: 4px;
+    align-self: flex-end;
+    color: #ddd;
+  }
+  .bubble-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ── EVAL CARD (inline) ── */
+  .eval-inline {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-top: -6px;
+    margin-bottom: 4px;
+    animation: fadeUp 0.3s 0.1s ease both;
+    align-self: flex-end;
+    max-width: 82%;
+    width: 100%;
+  }
+  .eval-inline .eval-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .eval-title { font-size: 11px; font-family: var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .verdict-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-family: var(--mono);
+  }
+  .verdict-badge.Strong { background: rgba(62,207,142,0.15); color: var(--green); border: 1px solid rgba(62,207,142,0.3); }
+  .verdict-badge.Good   { background: rgba(245,166,35,0.12); color: var(--amber); border: 1px solid rgba(245,166,35,0.3); }
+  .verdict-badge.Needs { background: rgba(255,95,87,0.12); color: var(--red);   border: 1px solid rgba(255,95,87,0.3); }
+
+  .scores-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .score-pill {
+    display: flex; flex-direction: column; align-items: center;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    min-width: 68px;
+  }
+  .score-pill .s-val { font-size: 20px; font-weight: 700; font-family: var(--mono); line-height: 1; }
+  .score-pill .s-label { font-size: 9px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .score-pill.overall .s-val { color: var(--accent2); }
+
+  .eval-feedback { font-size: 13px; color: #b0b0c0; line-height: 1.5; margin-bottom: 8px; }
+  .eval-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag {
+    font-size: 11px;
+    font-family: var(--mono);
+    padding: 3px 9px;
+    border-radius: 99px;
+  }
+  .tag.strength { background: rgba(62,207,142,0.1); color: #7fe8b8; border: 1px solid rgba(62,207,142,0.2); }
+  .tag.improve  { background: rgba(245,166,35,0.08); color: #f0c06a; border: 1px solid rgba(245,166,35,0.2); }
+
+  /* ── INPUT AREA ── */
+  .input-area {
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(transparent, var(--bg) 30%);
+    padding: 20px 0 24px;
+  }
+  .input-row {
+    display: flex;
+    gap: 10px;
+    background: var(--surface);
+    border: 1.5px solid var(--border2);
+    border-radius: 14px;
+    padding: 10px 10px 10px 16px;
+    transition: border-color 0.15s;
+  }
+  .input-row:focus-within { border-color: var(--accent); }
+  textarea {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    resize: none;
+    min-height: 22px;
+    max-height: 120px;
+  }
+  textarea::placeholder { color: var(--muted); }
+  .btn-send {
+    background: var(--accent);
+    border: none;
+    border-radius: 9px;
+    width: 38px; height: 38px;
+    cursor: pointer;
+    display: grid; place-items: center;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+    align-self: flex-end;
+  }
+  .btn-send:hover { opacity: 0.85; }
+  .btn-send:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn-send svg { width: 16px; height: 16px; }
+
+  /* ── TYPING INDICATOR ── */
+  .typing { display: flex; gap: 5px; align-items: center; padding: 14px 18px; }
+  .typing span {
+    width: 7px; height: 7px;
+    background: var(--muted);
+    border-radius: 50%;
+    animation: bounce 1.2s ease-in-out infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.15s; }
+  .typing span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-6px); }
+  }
+
+  /* ── REPORT SCREEN ── */
+  .report-hero {
+    text-align: center;
+    padding: 40px 0 32px;
+  }
+  .verdict-big {
+    font-size: 52px;
+    font-weight: 800;
+    letter-spacing: -2px;
+    margin-bottom: 6px;
+  }
+  .verdict-big.Excellent { color: var(--green); }
+  .verdict-big.Good      { color: var(--accent2); }
+  .verdict-big.Fair      { color: var(--amber); }
+  .verdict-big.NeedsImprovement { color: var(--red); }
+
+  .report-meta { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+  .avg-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin: 28px 0;
+  }
+  .avg-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 14px;
+    text-align: center;
+  }
+  .avg-card .val { font-size: 32px; font-weight: 700; font-family: var(--mono); color: var(--accent2); }
+  .avg-card .lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; font-family: var(--mono); }
+
+  .q-breakdown { display: flex; flex-direction: column; gap: 14px; margin-bottom: 32px; }
+  .q-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .q-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  .q-card-header:hover { background: var(--surface2); }
+  .q-num { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .q-score { font-family: var(--mono); font-size: 13px; color: var(--accent2); font-weight: 600; }
+  .q-body { padding: 0 18px; max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease; }
+  .q-body.open { max-height: 600px; padding: 0 18px 16px; }
+  .q-text { font-size: 13px; color: var(--muted); margin-bottom: 8px; line-height: 1.5; }
+  .q-answer { font-size: 13px; color: var(--text); background: var(--surface2); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; line-height: 1.5; }
+
+  .btn-restart {
+    width: 100%;
+    padding: 14px;
+    background: transparent;
+    color: var(--accent2);
+    border: 1.5px solid var(--accent);
+    border-radius: 12px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+    letter-spacing: 0.02em;
+  }
+  .btn-restart:hover { background: rgba(124,108,250,0.1); }
+
+  /* ── LOADING SCREEN ── */
+  #screen-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    gap: 18px;
+  }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">⚡</div>
+    <h1>Interview <span>Simulator</span></h1>
+  </header>
+
+  <!-- SETUP SCREEN -->
+  <div id="screen-setup" class="screen active">
+    <div class="setup-grid">
+      <div class="section-label">Select topic</div>
+      <div class="option-card" data-type="topic" data-val="Data Structures &amp; Algorithms">
+        <div class="label">Data Structures &amp; Algorithms</div>
+        <div class="sub">arrays · trees · graphs · sorting</div>
+      </div>
+      <div class="option-card" data-type="topic" data-val="System Design">
+        <div class="label">System Design</div>
+        <div class="sub">scalability · architecture · APIs</div>
+      </div>
+      <div class="option-card" data-type="topic" data-val="Machine Learning">
+        <div class="label">Machine Learning</div>
+        <div class="sub">models · training · evaluation</div>
+      </div>
+      <div class="option-card" data-type="topic" data-val="Web Development">
+        <div class="label">Web Development</div>
+        <div class="sub">frontend · backend · databases</div>
+      </div>
+      <div class="option-card" data-type="topic" data-val="Behavioral / HR" style="grid-column: 1/-1">
+        <div class="label">Behavioral / HR</div>
+        <div class="sub">communication · leadership · culture fit</div>
+      </div>
+    </div>
+
+    <div class="setup-grid diff-grid">
+      <div class="section-label">Difficulty</div>
+      <div class="option-card" data-type="difficulty" data-val="Junior">
+        <div class="label">Junior</div>
+        <div class="sub">0–2 yrs</div>
+      </div>
+      <div class="option-card" data-type="difficulty" data-val="Mid-Level">
+        <div class="label">Mid-Level</div>
+        <div class="sub">2–5 yrs</div>
+      </div>
+      <div class="option-card" data-type="difficulty" data-val="Senior">
+        <div class="label">Senior</div>
+        <div class="sub">5+ yrs</div>
+      </div>
+    </div>
+
+    <button class="btn-start" id="btn-start" disabled onclick="startInterview()">
+      Start Interview →
+    </button>
+  </div>
+
+  <!-- LOADING SCREEN -->
+  <div id="screen-loading" class="screen">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loading-text">Preparing your interview...</div>
+  </div>
+
+  <!-- INTERVIEW SCREEN -->
+  <div id="screen-interview" class="screen">
+    <div class="progress-label">
+      <span id="prog-label">Question 0 of 4</span>
+      <span id="prog-pct">0%</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="prog-fill"></div></div>
+
+    <div class="chat-feed" id="chat-feed"></div>
+
+    <div class="input-area">
+      <div class="input-row">
+        <textarea id="answer-input" placeholder="Type your answer..." rows="1"
+          oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
+        <button class="btn-send" id="btn-send" onclick="submitAnswer()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPORT SCREEN -->
+  <div id="screen-report" class="screen">
+    <div class="report-hero">
+      <div class="verdict-big" id="rpt-verdict"></div>
+      <div class="report-meta" id="rpt-meta"></div>
+    </div>
+    <div class="avg-grid" id="avg-grid"></div>
+    <div class="q-breakdown" id="q-breakdown"></div>
+    <button class="btn-restart" onclick="restart()">↺ Start New Interview</button>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+let state = { sessionId: null, topic: null, difficulty: null, qCount: 0, maxQ: 4 };
+
+// ── SETUP ──
+document.querySelectorAll('.option-card').forEach(card => {
+  card.addEventListener('click', () => {
+    const type = card.dataset.type;
+    document.querySelectorAll(`.option-card[data-type="${type}"]`).forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    state[type] = card.dataset.val;
+    checkReady();
+  });
+});
+
+function checkReady() {
+  document.getElementById('btn-start').disabled = !(state.topic && state.difficulty);
+}
+
+// ── SCREENS ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+// ── START ──
+async function startInterview() {
+  showScreen('loading');
+  document.getElementById('loading-text').textContent = 'Preparing your interview...';
+  try {
+    const res = await fetch(`${API}/api/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic: state.topic, difficulty: state.difficulty })
+    });
+    const data = await res.json();
+    state.sessionId = data.session_id;
+    state.qCount = data.q_count;
+    state.maxQ = data.max_questions;
+
+    document.getElementById('chat-feed').innerHTML = '';
+    updateProgress(state.qCount, state.maxQ);
+    addBubble('interviewer', data.message);
+    showScreen('interview');
+    document.getElementById('answer-input').focus();
+  } catch(e) {
+    alert('Failed to connect to backend. Make sure uvicorn is running on port 8000.');
+    showScreen('setup');
+  }
+}
+
+// ── SUBMIT ──
+async function submitAnswer() {
+  const input = document.getElementById('answer-input');
+  const answer = input.value.trim();
+  if (!answer || document.getElementById('btn-send').disabled) return;
+
+  input.value = '';
+  input.style.height = '';
+  document.getElementById('btn-send').disabled = true;
+  input.disabled = true;
+
+  addBubble('candidate', answer);
+  addTyping();
+
+  try {
+    const res = await fetch(`${API}/api/answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: state.sessionId, answer })
+    });
+    const data = await res.json();
+    removeTyping();
+
+    state.qCount = data.q_count;
+    updateProgress(state.qCount, state.maxQ);
+
+    // Show evaluation inline
+    if (data.evaluation) addEvalCard(data.evaluation);
+
+    if (data.complete) {
+      if (data.message) addBubble('interviewer', data.message);
+      setTimeout(() => showReport(), 1200);
+    } else {
+      if (data.message) addBubble('interviewer', data.message);
+      document.getElementById('btn-send').disabled = false;
+      input.disabled = false;
+      input.focus();
+    }
+  } catch(e) {
+    removeTyping();
+    addBubble('interviewer', 'Connection error. Please try again.');
+    document.getElementById('btn-send').disabled = false;
+    input.disabled = false;
+  }
+}
+
+// ── CHAT HELPERS ──
+function addBubble(role, text) {
+  const feed = document.getElementById('chat-feed');
+  const wrap = document.createElement('div');
+  wrap.className = 'bubble ' + role;
+  const lbl = document.createElement('div');
+  lbl.className = 'bubble-label';
+  lbl.textContent = role === 'interviewer' ? 'Interviewer' : 'You';
+  const body = document.createElement('div');
+  body.textContent = text.replace('INTERVIEW_COMPLETE', '').trim();
+  wrap.appendChild(lbl);
+  wrap.appendChild(body);
+  feed.appendChild(wrap);
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function addTyping() {
+  const feed = document.getElementById('chat-feed');
+  const t = document.createElement('div');
+  t.className = 'bubble interviewer';
+  t.id = 'typing-indicator';
+  t.innerHTML = '<div class="bubble-label">Interviewer</div><div class="typing"><span></span><span></span><span></span></div>';
+  feed.appendChild(t);
+  t.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function removeTyping() {
+  const t = document.getElementById('typing-indicator');
+  if (t) t.remove();
+}
+
+function addEvalCard(ev) {
+  const feed = document.getElementById('chat-feed');
+  const verdictClass = ev.verdict === 'Needs Work' ? 'Needs' : ev.verdict;
+  const card = document.createElement('div');
+  card.className = 'eval-inline';
+  card.innerHTML = `
+    <div class="eval-header">
+      <div class="eval-title">Q${ev.question_number} Evaluation</div>
+      <div class="verdict-badge ${verdictClass}">${ev.verdict}</div>
+    </div>
+    <div class="scores-row">
+      <div class="score-pill"><div class="s-val">${ev.technical_score}</div><div class="s-label">Technical</div></div>
+      <div class="score-pill"><div class="s-val">${ev.communication_score}</div><div class="s-label">Comms</div></div>
+      <div class="score-pill"><div class="s-val">${ev.confidence_score}</div><div class="s-label">Confidence</div></div>
+      <div class="score-pill overall"><div class="s-val">${ev.overall_score}</div><div class="s-label">Overall</div></div>
+    </div>
+    <div class="eval-feedback">${ev.feedback}</div>
+    <div class="eval-tags">
+      ${(ev.strengths||[]).map(s=>`<span class="tag strength">+ ${s}</span>`).join('')}
+      ${(ev.areas_for_improvement||[]).map(s=>`<span class="tag improve">↑ ${s}</span>`).join('')}
+    </div>`;
+  feed.appendChild(card);
+  card.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function updateProgress(q, max) {
+  const pct = Math.round((q / max) * 100);
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-label').textContent = `Question ${q} of ${max}`;
+  document.getElementById('prog-pct').textContent = pct + '%';
+}
+
+// ── REPORT ──
+async function showReport() {
+  showScreen('loading');
+  document.getElementById('loading-text').textContent = 'Generating your report...';
+  const res = await fetch(`${API}/api/report/${state.sessionId}`);
+  const data = await res.json();
+
+  const vMap = { 'Needs Improvement': 'NeedsImprovement' };
+  const vClass = vMap[data.verdict] || data.verdict;
+  const vEl = document.getElementById('rpt-verdict');
+  vEl.textContent = data.verdict;
+  vEl.className = 'verdict-big ' + vClass;
+  document.getElementById('rpt-meta').textContent = `${data.topic} · ${data.difficulty} · ${data.evaluations.length} questions`;
+
+  const avg = data.averages;
+  document.getElementById('avg-grid').innerHTML = `
+    <div class="avg-card"><div class="val">${avg.technical}</div><div class="lbl">Technical</div></div>
+    <div class="avg-card"><div class="val">${avg.communication}</div><div class="lbl">Comms</div></div>
+    <div class="avg-card"><div class="val">${avg.confidence}</div><div class="lbl">Confidence</div></div>
+    <div class="avg-card"><div class="val">${avg.overall}</div><div class="lbl">Overall</div></div>`;
+
+  const bd = document.getElementById('q-breakdown');
+  bd.innerHTML = data.evaluations.map((ev, i) => {
+    const vC = ev.verdict === 'Needs Work' ? 'Needs' : ev.verdict;
+    return `
+    <div class="q-card">
+      <div class="q-card-header" onclick="toggleQ(${i})">
+        <span class="q-num">Question ${ev.question_number}</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="verdict-badge ${vC}">${ev.verdict}</span>
+          <span class="q-score">${ev.overall_score}/10</span>
+          <span style="color:var(--muted);font-size:12px" id="qchev-${i}">▼</span>
+        </div>
+      </div>
+      <div class="q-body" id="qbody-${i}">
+        <div class="q-text">${ev.question || ''}</div>
+        <div class="q-answer">${ev.answer || ''}</div>
+        <div class="scores-row">
+          <div class="score-pill"><div class="s-val">${ev.technical_score}</div><div class="s-label">Technical</div></div>
+          <div class="score-pill"><div class="s-val">${ev.communication_score}</div><div class="s-label">Comms</div></div>
+          <div class="score-pill"><div class="s-val">${ev.confidence_score}</div><div class="s-label">Confidence</div></div>
+        </div>
+        <div class="eval-feedback">${ev.feedback}</div>
+        <div class="eval-tags">
+          ${(ev.strengths||[]).map(s=>`<span class="tag strength">+ ${s}</span>`).join('')}
+          ${(ev.areas_for_improvement||[]).map(s=>`<span class="tag improve">↑ ${s}</span>`).join('')}
+        </div>
+      </div>
+    </div>`}).join('');
+
+  showScreen('report');
+}
+
+function toggleQ(i) {
+  const body = document.getElementById('qbody-' + i);
+  const chev = document.getElementById('qchev-' + i);
+  body.classList.toggle('open');
+  chev.textContent = body.classList.contains('open') ? '▲' : '▼';
+}
+
+function restart() {
+  state = { sessionId: null, topic: null, difficulty: null, qCount: 0, maxQ: 4 };
+  document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('btn-start').disabled = true;
+  showScreen('setup');
+}
+
+// ── TEXTAREA ──
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitAnswer(); }
+}
+</script>
+</body>
+</html>

@@ -378,7 +378,7 @@
 
   /* ── LOADING SCREEN ── */
   #screen-loading {
-    display: flex;
+    display: none;
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -517,8 +517,13 @@ function checkReady() {
 
 // ── SCREENS ──
 function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + id).classList.add('active');
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active');
+    s.style.display = 'none';
+  });
+  const el = document.getElementById('screen-' + id);
+  el.style.display = 'block';
+  el.classList.add('active');
 }
 
 // ── START ──
@@ -578,7 +583,7 @@ async function submitAnswer() {
 
     if (data.complete) {
       if (data.message) addBubble('interviewer', data.message);
-      setTimeout(() => showReport(), 1200);
+      addEndBanner();
     } else {
       if (data.message) addBubble('interviewer', data.message);
       document.getElementById('btn-send').disabled = false;
@@ -591,6 +596,35 @@ async function submitAnswer() {
     document.getElementById('btn-send').disabled = false;
     input.disabled = false;
   }
+}
+
+function addEndBanner() {
+  const feed = document.getElementById('chat-feed');
+  const banner = document.createElement('div');
+  banner.innerHTML = `
+    <div style="text-align:center; padding: 24px 0 8px;">
+      <div style="font-family:var(--mono); font-size:12px; color:var(--red); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:16px;">
+        ⚠ Interview has ended
+      </div>
+      <button onclick="showReport()" style="
+        padding: 12px 28px;
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-family: var(--sans);
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        letter-spacing: 0.02em;
+      ">View Final Report →</button>
+    </div>`;
+  feed.appendChild(banner);
+  banner.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+  // disable input
+  document.getElementById('answer-input').disabled = true;
+  document.getElementById('btn-send').disabled = true;
 }
 
 // ── CHAT HELPERS ──
@@ -720,6 +754,9 @@ function restart() {
   state = { sessionId: null, topic: null, difficulty: null, qCount: 0, maxQ: 4 };
   document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
   document.getElementById('btn-start').disabled = true;
+  document.getElementById('answer-input').disabled = false;
+  document.getElementById('btn-send').disabled = false;
+  document.getElementById('answer-input').value = '';
   showScreen('setup');
 }
 

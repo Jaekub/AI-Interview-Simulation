@@ -180,16 +180,16 @@ async def start_interview(req: StartRequest):
         "difficulty": req.difficulty,
         "history": [],
         "evaluations": [],
+        "questions": [],
         "q_count": 0,
         "complete": False,
     }
     session = sessions[session_id]
 
-    # Get first interviewer message
     first_msg = await get_next_interviewer_message(session)
     session["history"].append({"interviewer": first_msg, "candidate": None})
-    if "?" in first_msg:
-        session["q_count"] += 1
+    session["questions"].append(first_msg)
+    session["q_count"] = 1
 
     return {
         "session_id": session_id,
@@ -208,34 +208,32 @@ async def submit_answer(req: AnswerRequest):
     if session["complete"]:
         raise HTTPException(status_code=400, detail="Interview already complete")
 
-    # Attach candidate answer to last history entry
     if session["history"] and session["history"][-1]["candidate"] is None:
         session["history"][-1]["candidate"] = req.answer
 
     current_q = session["q_count"]
 
-    # Get next interviewer message
-    next_msg = await get_next_interviewer_message(session, req.answer)
+    # Evaluate using the correct question for this answer
+    last_question = session["questions"][current_q - 1] if current_q - 1 < len(session["questions"]) else ""
+    
+    # Get next message and evaluate in parallel
+    next_msg_task = get_next_interviewer_message(session, req.answer)
+    eval_task = evaluate_answer(last_question, req.answer, current_q, session["topic"], session["difficulty"])
+    next_msg, evaluation = await asyncio.gather(next_msg_task, eval_task)
 
-    # Check for completion
     complete = "INTERVIEW_COMPLETE" in next_msg
     display_msg = next_msg.replace("INTERVIEW_COMPLETE", "").strip()
 
     if not complete:
         session["history"].append({"interviewer": next_msg, "candidate": None})
-        if "?" in next_msg:
-            session["q_count"] += 1
+        session["questions"].append(next_msg)
+        session["q_count"] += 1
 
-    # Evaluate the answer
-    last_question = session["history"][current_q - 1]["interviewer"] if current_q > 0 else ""
-    evaluation = await evaluate_answer(
-        last_question, req.answer, current_q,
-        session["topic"], session["difficulty"]
-    )
     session["evaluations"].append(evaluation)
 
     if complete:
         session["complete"] = True
+        session["final_message"] = display_msg
 
     return {
         "message": display_msg,
